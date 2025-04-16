@@ -3,11 +3,11 @@
 rbm.py 
 
 Loads the class which implements a Restricted Boltzmann Machine (RBM).  
-
 '''
 
 import numpy as np
 import matplotlib.pyplot as plt
+from itertools import product
 
 # Let's define the sigmoid function. The Gibbs sampler thingy is predictated on computing conditional probabilities. 
 
@@ -19,30 +19,73 @@ class ResBoltMan():
         self.hid = np.random.randint(0, 2, size=num_hid)
         
         #self.visi = np.random.randint(0, 2, size=num_visi)
-        self.weights = np.random.uniform(-0.05,0.05, size=(num_visi, num_hid)) 
+        self.weights = np.random.uniform(-0.05, 0.05, size=(num_visi, num_hid)) 
         self.bias_visi = np.random.uniform(0, 0.05, size=num_visi)
         self.bias_hid = np.random.uniform(0, 0.05, size=num_hid)
         
     def sigmoid(self, z):
         return 1/(1 + np.exp(-z))
-    
-    def prob_function(self, visi, hid): # This computes p(v,h). We assume that v and h are seperate neuron configurations  
-        total_prob = 0 
-        for ii in range(self.num_visi):
-            for jj in range(self.num_hid):
-                first_term= visi[ii]@self.weights[ii, jj]@hid[jj]
-                second_term = visi[ii]@self.bias_visi[ii]
-                third_term = hid[jj]@self.bias_hid[jj]
+
+
+    def get_all_visi(self): # This computes every possible visible neuron configuration 
+        all_visi = []
+        combinations = list(product([0,1], repeat=self.num_visi))
         
-        return np.exp(first_term + second_term + third_term)
+        for ii in range(len(combinations)):
+            combinations[ii] = np.array(combinations[ii])
+        
+        return combinations 
     
-    def unnorm_prob_function(self, visi, hid_list): # Given a batch of visible neuron configuartions, this computes sum_(p(v,h))
-        total_prob = 0
-        for hid in hid_list: 
-            total_prob += self.prob_function(visi, hid)
+    
+    def get_all_hid(self): # This computes every possible hidden neuron configuration
+    
+        all_hid = []
+        combinations = list(product([0,1], repeat=self.num_hid))
+        
+        for ii in range(len(combinations)):
+            combinations[ii] = np.array(combinations[ii])
             
-        return total_prob
+        return combinations 
+
     
+    def prob_function(self, visi): # This computes p(v). Here, we do the computation over all possible hidden neuron configurations 
+        
+        total_prob = 0 
+        first_term = np.exp(np.transpose(visi)@self.bias_visi)
+        second_term = 1
+        temp = 0
+        
+        for jj in range(self.num_hid):
+            for ii in range(self.num_visi):
+                temp += np.exp(visi[ii]*self.weights[ii, jj] + self.bias_hid[jj])
+            
+            second_term = second_term * temp
+            # Reinitialize temp to 0 
+            temp = 0
+        
+        
+        return first_term*second_term 
+    
+    def partition_function(self): # Computes the partition function 
+     
+        total_part = 0
+        
+        # Get all combinations of visible neuron configurations
+        
+        visi_combos = self.get_all_visi()
+        
+        for visi in visi_combos:
+            total_part += self.prob_function(visi)
+        
+        return total_part
+    
+    def normalized_prob(self, visi):
+        '''
+        Computes the normalized probability 
+        visi -- input visible neuron configuration
+        '''
+        return (1/self.partition_function())*self.prob_function(visi)
+        
     def grad_update(self, visi_list_0, hid_list_0, visi_list_1, hid_list_1, lr): # This computes the expectation values of quantities necessary to update the parameters
         
         for i in range(self.num_visi):
@@ -124,4 +167,46 @@ class ResBoltMan():
                 hid_neo[jj] = 0 
         
         self.hid = hid_neo
+        
+        
+    def gibb_sample(self, M):
+        
+        # Gibbs sampling algorithm
+        # M - number of Gibbs sampling steps.
+        
+        # Store generated visible/hidden neuron configuration pairs
+        visi_gibbs = []
+        hid_gibbs = []
+        
+        for ii in range(M):
+            # Sample from v 
+            new_visi = self.sample_from_v()
+            visi_gibbs.append(new_visi)
+            # Sample from h 
+            self.sample_new_h(new_visi)
+            hid_gibbs.append(self.hid)
+            
+        return visi_gibbs, hid_gibbs
+    
+    
+        
+    
+    
+            
+            
+            
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+
         
