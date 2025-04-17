@@ -8,6 +8,7 @@ Loads the class which implements a Restricted Boltzmann Machine (RBM).
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import product
+import hamils
 
 # Let's define the sigmoid function. The Gibbs sampler thingy is predictated on computing conditional probabilities. 
 
@@ -48,7 +49,7 @@ class ResBoltMan():
         return combinations 
 
     
-    def prob_function(self, visi): # This computes p(v). Here, we do the computation over all possible hidden neuron configurations 
+    def prob_function(self, visi): # This computes the unnormalized p(v). Here, we do the computation over all possible hidden neuron configurations 
         
         total_prob = 0 
         first_term = np.exp(np.transpose(visi)@self.bias_visi)
@@ -57,12 +58,11 @@ class ResBoltMan():
         
         for jj in range(self.num_hid):
             for ii in range(self.num_visi):
-                temp += np.exp(visi[ii]*self.weights[ii, jj] + self.bias_hid[jj])
+                temp += visi[ii]*self.weights[ii, jj] + self.bias_hid[jj]
             
-            second_term = second_term * temp
+            second_term = second_term*(1+np.exp(temp))
             # Reinitialize temp to 0 
             temp = 0
-        
         
         return first_term*second_term 
     
@@ -79,13 +79,99 @@ class ResBoltMan():
         
         return total_part
     
+    
+    def visi_bias_deri_prob(self, visi): # This computes the derivative of the unnormalized probability with respect to the visible bias 
+        second_term = 1
+        first_term = np.exp(np.transpose(visi)@self.bias_visi)*visi
+        temp = 0
+        
+        for jj in range(self.num_hid):
+            for ii in range(self.num_visi):
+                temp += np.exp(visi[ii]*self.weights[ii, jj] + self.bias_hid[jj])
+                
+            second_term = second_term*(1+np.exp(temp))
+            temp=0
+        
+        return first_term*second_term 
+    
+    
+    def visi_bias_deri_part(self): # This computes the derivative of the partition function with respect to the visible bias
+        total_part = 0
+        
+        # Get all combinations of visible neuron configurations
+        
+        visi_combos = self.get_all_visi()
+        for visi in visi_combos: 
+            total_part += self.visi_bias_deri_prob(visi)
+            
+            
+        return total_part
+    
+
+    def weight_deri_prob(self, visi, i): # This computes the derivative of the probability function with respect to the matrix of 
+    
+    
+        # i, (and j implicitly) -- This specifies the element in the weight matrix that we are modifying.  
+    
+        second_term = 1
+        first_term = np.exp(np.transpose(visi)@self.bias_visi)
+        temp = 0
+        
+        for jj in range(self.num_hid):
+            for ii in range(self.num_visi):
+                temp += visi[ii]*self.weights[ii, jj] + self.bias_hid[jj]
+                
+            second_term = second_term*(1 + np.exp(temp))*visi[i]
+            temp=0
+        
+        return first_term*second_term
+    
+    
+    def weight_deri_part(self, i): # This computes the derivative of the partition function with respect to the matrix of weights
+        total_part = 0
+        
+        # Get all combinations of visible neuron configurations
+        
+        visi_combos = self.get_all_visi()
+        for visi in visi_combos: 
+            total_part += self.weight_deri_prob(visi, i)
+            
+            
+        return total_part
+    
     def normalized_prob(self, visi):
         '''
         Computes the normalized probability 
         visi -- input visible neuron configuration
         '''
         return (1/self.partition_function())*self.prob_function(visi)
+    
+    
+    def visi_bias_deri_final(self, visi): # This computes the derivative of the NORMALIZED probability function wrt the visible bias. 
+        return (1/self.partition_function())*(self.visi_bias_deri_prob(visi)) - ((1/self.partition_function())**2)*(self.prob_function(visi)*self.visi_bias_deri_part())
+    
+    def hid_bias_deri_final(self, visi): # This computes the derivative of the NORMALIZED probability function wrt the hidden bias. Here, the derivative is actually unchanged ... wait a second, this just evaluates to zero? 
+        return (1/self.partition_function())*(self.prob_function(visi)) - ((1/self.partition_function())**2)*(self.prob_function(visi)*self.partition_function())
+    
+    def weight_deri_final(self, visi, i): # This computes the derivative of the NORMALIZED probability function wrt the weights. 
+        return (1/self.partition_function())*(self.weight_deri_prob(visi, i)) - ((1/self.partition_function())**2)*(self.prob_function(visi, i)*self.weight_deri_part())
+    
+
+    '''
+    def grad_update(self, M): # This performs the gradient update necessary to update the tuneable parameters of your matrix. 
+    
+        # Using the RBM, perform Gibbs sampling M times. 
+    
+        visi_gibbs, hid_gibbs = self.gibb_sample(M)
         
+        # Now perform the update
+        
+   
+        return 
+    
+    '''
+
+    
     def grad_update(self, visi_list_0, hid_list_0, visi_list_1, hid_list_1, lr): # This computes the expectation values of quantities necessary to update the parameters
         
         for i in range(self.num_visi):
