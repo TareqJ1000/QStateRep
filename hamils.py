@@ -30,32 +30,26 @@ def compute_pauli_i(N, i, pauli_type='z'): # Note that i here works in base zero
     i - which qubit are we acting on? 
     pauli_type - which pauli operator are we simulating?
     '''
-    pauli_op = np.eye(2) # Or sigma 0
+    
     
     if (pauli_type=='z'):
         pauli_op = sigma_z
     elif (pauli_type=='x'):
         pauli_op = sigma_x
-    
-    # The initialization of the pauli i operator depends on the value of i
-    
-    if (i==0):
-        pauli_i = np.kron(pauli_op, np.eye(2))
-    else:
-        pauli_i = np.kron(np.eye(2), np.eye(2))
+    else: 
+        pauli_op = np.eye(2) # Or sigma 0
         
-    #print(pauli_i)
-    #input()
-            
-    for ii in range(N-2): # So we are starting from the ii = 2 position, not ii==0
-        if (ii+2==i):
-            pauli_i = np.kron(pauli_i, pauli_op)
-        else:
-            pauli_i = np.kron(pauli_i, np.eye(2))
+    
+    prod_ops = [np.eye(2)]*N
+    prod_ops[i] = pauli_op
+    
+    result = prod_ops[0]
+    for op in prod_ops[1:]: # So we are starting from the ii = 2 position, not ii==0
         #print(pauli_i)
+        result = np.kron(result, op)
         #input()
         
-    return pauli_i
+    return result
 
 
 def init_hamil(N): # This instantiates the 2^N by 2^N Hamiltonian we are going to generate
@@ -92,7 +86,7 @@ def compute_hamiltonian(N, h):
     for ii in range(N):
         if (ii+1==N):
             hamil += -compute_pauli_i(N, ii, pauli_type='z')@compute_pauli_i(N, 0, pauli_type='z') - h*compute_pauli_i(N, ii, pauli_type='x')
-        else: 
+        else:
             hamil += -compute_pauli_i(N, ii, pauli_type='z')@compute_pauli_i(N, ii+1, pauli_type='z') - h*compute_pauli_i(N, ii, pauli_type='x')
         
     return hamil
@@ -119,14 +113,11 @@ def create_basis_array(N):
     return combinations
 
  
-def gen_basis_state(N, basis_array): 
+def gen_basis_state(N): 
     
     '''
     N - number of qubits in our system 
     '''
-    
-    #base_ket = np.zeros(2, dtype=np.complex128)
-    
     base_kets = []
 
     # Initialize the complete basis state, which occupies the 2^N dimensional Hilbert space. 
@@ -134,13 +125,10 @@ def gen_basis_state(N, basis_array):
     for ii in range(N):
         base_kets.append(np.zeros(2, dtype=np.complex128))
         
-    # Now, we modify copies of the base ket by consulting the basis_array 
+    # Now, we modify copies of the base ket by consulting the basis_array
     
-    #print(basis_array)
-    #print(combo)
-    #input()
-    
-    
+    basis_array = create_basis_array(N)
+
     full_basis_array = []
     
     for combo in basis_array: 
@@ -167,13 +155,14 @@ def gen_basis_state(N, basis_array):
     
     return full_basis_array
 
-def local_hamil(basis_states, m, hamil, psi_basis):
+
+
+def local_hamil(sample_config, basis_states, hamil, psi_basis, psi_config):
     
     '''
     Computes the local energy as a function on the m^{th} basis state.  
     
     basis_states -- set of all basis states 
-    m -- Index of m^{th} basis state that is of interest
     hamil -- Hamiltonian  
     psi_basis --  set of probability amplitudes 
     '''
@@ -182,20 +171,24 @@ def local_hamil(basis_states, m, hamil, psi_basis):
     local_hamil = 0
     
     for ii in range(len(basis_states)):
-        local_hamil += bra_op(basis_states[m])@hamil@basis_states[ii]*(psi_basis[ii]/psi_basis[m])
+        local_hamil += bra_op(sample_config)@hamil@basis_states[ii]*(psi_basis[ii]/psi_config)
+        #print(local_hamil)
     
-    return local_hamil 
+    return local_hamil
+
+    
+
+
+'''
     
     
 def hamil_expect(basis_states, hamil, psi_basis):
     
-    '''
     Computes the Hamiltonian expectatiom value
     
     basis_states -- set of all basis states 
     hamil -- Hamiltonian 
     psi_basis -- set of probability amplitudes 
-    '''
     
     M = len(basis_states)
     hamil_expect = 0
@@ -209,7 +202,7 @@ def hamil_expect(basis_states, hamil, psi_basis):
     
 #your_basis = gen_basis_state(3, create_basis_array(3))
 
-
+'''
 
 
 
