@@ -1,0 +1,13 @@
+N: 5
+h: 1.0
+num_hid: 5
+name: 'rbm_5'
+
+
+optim_type: 'adam'
+num_epochs: 2000
+num_samples: 1000
+lr: 0.001
+
+save_direc: 'rbm_5'
+plot_direc: 'rbm_5'

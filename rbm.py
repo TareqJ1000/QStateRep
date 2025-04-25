@@ -455,6 +455,30 @@ class ResBoltMan():
             
         return (1/M)*hamil_expect
     
+    
+    
+    #  Variation of the hamil_expect function which extracts the mean and variance of the expectation value trained by the RBM.  
+    
+    def get_mean_var(self, M):
+        psi_basis = self.compute_prob_basis()
+        # Using the RBM, perform Gibbs sampling M times. 
+        visi_gibbs, hid_gibbs = self.gibb_sample(M)
+        
+        hamil_expects = []
+        
+        for visi in visi_gibbs:
+            psi_visi = np.sqrt(self.normalized_prob(visi))
+            # For the local hamiltonian, we need the STATE representation, not the label! 
+            visi_state = self.gen_basis_state(visi)
+            # Compute the expectation value and save it in a list
+            hamil_expect = local_hamil(visi_state, self.basis_states, self.hamil, psi_basis, psi_visi)
+            hamil_expects.append(hamil_expect)
+        
+        mean_expect, var_expect = np.mean(hamil_expects), np.var(hamil_expects)
+        
+        return mean_expect, var_expect
+        
+    
     # Saves the RBM's trainable parameters 
     
     def save_rbm(self, save_direc):
@@ -471,8 +495,6 @@ class ResBoltMan():
         self.bias_visi = np.loadtxt(f'{save_direc}/bias_visi_{rbm_name}')
         
         
-    
-
 
 '''
     def grad_update(self, visi_list_0, hid_list_0, visi_list_1, hid_list_1, lr): # This computes the expectation values of quantities necessary to update the parameters
